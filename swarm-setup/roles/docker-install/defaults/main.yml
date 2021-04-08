@@ -1,0 +1,14 @@
+---
+# defaults file for docker-install
+
+docker_channel: "stable"
+
+docker_group_gid: 997
+
+docker_daemon_config:
+  - '"metrics-addr" : "0.0.0.0:9323"'
+  - '"experimental" : true'
+
+docker_compose_version: 1.28.2
+
+docker_install_docker_compose: True

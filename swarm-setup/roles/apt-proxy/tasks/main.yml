@@ -1,0 +1,39 @@
+---
+# tasks file for apt-proxy
+
+- name: apt-proxy | Install apt-cacher-ng
+  apt:
+    name: apt-cacher-ng
+    state: present
+    update_cache: True
+  become: True
+
+- name: apt-proxy | Enable https forwarding
+  lineinfile:
+    dest: /etc/apt-cacher-ng/acng.conf
+    line: 'PassThroughPattern: .*'
+    regexp: '^(# )?PassThroughPattern: .*$'
+    state: present
+  become: True
+
+- name: apt-proxy | Add docker repo mapping
+  copy:
+    content: https://download.docker.com/linux/ubuntu
+    dest: /etc/apt-cacher-ng/download.docker.com_linux_ubuntu
+    mode: 644
+    owner: root
+    group: root
+  become: True
+
+- name: apt-proxy | Add remap rule
+  lineinfile:
+    dest: /etc/apt-cacher-ng/acng.conf
+    line: "Remap-docker: http://docker-repo.local ; file:download.docker.com_linux_ubuntu"
+    state: present
+  become: True
+
+- name: apt-proxy | reload apt-cacher-ng
+  systemd:
+    name: apt-cacher-ng
+    state: restarted
+  become: True

@@ -1,0 +1,5 @@
+{
+{% if docker_daemon_config is defined %}
+  {{ docker_daemon_config | join (",\n  ")}}}
+{% endif %}
+}

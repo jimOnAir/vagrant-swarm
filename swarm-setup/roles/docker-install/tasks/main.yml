@@ -1,0 +1,105 @@
+---
+# tasks file for docker-install
+
+- name: docker-install | Create group docker
+  group:
+    name: "docker"
+    state: present
+    gid: "{{ docker_group_gid | default(999) }}"
+    system: True
+  become: True
+
+- name: docker-install | Remove old Docker
+  apt:
+    name:
+    - 'docker'
+    - 'docker-engine'
+    - 'docker.io'
+    state: 'absent'
+    purge: True
+  become: True
+
+- name: docker-install | Install prerequisites
+  apt:
+    name:
+    - 'apt-transport-https'
+    - 'ca-certificates'
+    - 'curl'
+    - 'software-properties-common'
+    - 'python3-pip'
+    state: 'present'
+    update_cache: True
+    install_recommends: False
+    cache_valid_time: "{{ apt_update_cache_valid_time | default(3600) }}"
+  become: True
+
+- name: docker-install | Add Docker GPG key
+  apt_key: url=https://download.docker.com/linux/ubuntu/gpg
+  become: True
+
+- name: docker-install | Add Docker APT repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+  become: True
+  when: not apt_proxy is defined
+
+- name: docker-install | Add Docker APT repository
+  apt_repository:
+    repo: deb [arch=amd64] http://docker-repo.local {{ ansible_distribution_release }} stable
+  become: True
+  when: apt_proxy is defined
+
+- name: docker-install | Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+    state: 'present'
+    update_cache: True
+    install_recommends: False
+  become: True
+
+- name: docker-install | Install Docker Compose
+  get_url:
+    url: ' https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-Linux-x86_64'
+    dest: '/usr/local/bin/docker-compose'
+    force: True
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+  become: True
+  when: docker_install_docker_compose
+
+- name: docker-install | Install python docker
+  pip:
+    name:
+      - docker
+      - jsondiff
+      - pyyaml
+    state: present
+
+- name: docker-install | Add user to 'docker' group
+  user:
+    name: '{{ docker_user }}'
+    groups: 'docker'
+    append: True
+  become: True
+  register: need_relogin
+
+- name: docker-install | reset ssh connection
+  meta: reset_connection
+
+- name: docker-install | Copy config file
+  template:
+    src: "{{ role_path }}/templates/daemon.json.j2"
+    dest: "/etc/docker/daemon.json"
+    owner: root
+    group: root
+    mode: 0644
+  become: True
+
+- name: docker-install | Restart docker
+  service:
+    name: "docker"
+    state: "restarted"
+  become: True

@@ -1,0 +1,3 @@
+.vagrant
+.vscode
+swarm-setup/join-token-*

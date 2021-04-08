@@ -1,0 +1,7 @@
+- name: Setup additional managers
+  hosts: additional_managers
+  gather_facts: True
+  roles:
+    - { role: apt-setup }
+    - { role: docker-install }
+    - { role: swarm-manager }

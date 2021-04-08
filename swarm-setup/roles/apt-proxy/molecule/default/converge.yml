@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include apt-proxy"
+      include_role:
+        name: "apt-proxy"

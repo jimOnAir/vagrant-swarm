@@ -1,0 +1,6 @@
+- name: Setup apt-proxy
+  hosts: apt-proxy
+  gather_facts: True
+  roles:
+    - { role: apt-setup }
+    - { role: apt-proxy }

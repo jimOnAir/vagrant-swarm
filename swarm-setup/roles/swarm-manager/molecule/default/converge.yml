@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include swarm-manager"
+      include_role:
+        name: "swarm-manager"

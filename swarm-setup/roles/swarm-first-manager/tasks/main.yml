@@ -1,0 +1,16 @@
+---
+# tasks file for swarm-manager
+
+- name: Swarm manager | Initialize the swarm cluster
+  docker_swarm:
+    state: present
+    advertise_addr: "{{ first_manager_ip }}"
+  register: swarm_info
+
+- name: Copy worker join token to local file
+  local_action: copy content="{{ swarm_info.swarm_facts.JoinTokens.Worker }}" dest="./join-token-worker"
+  become: false
+
+- name: Copy manager join token to local file
+  local_action: copy content="{{ swarm_info.swarm_facts.JoinTokens.Manager }}" dest="./join-token-manager"
+  become: false
