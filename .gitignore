@@ -1,3 +1,4 @@
 .vagrant
 .vscode
 swarm-setup/join-token-*
+swarm-setup/roles/deploy-traefik/files/*

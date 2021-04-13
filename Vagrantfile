@@ -197,7 +197,6 @@ puts [
 "sudo iptables -t nat -I OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443",
 "",
 "Remove port redirection:",
-"Add port redirection to services to be available on 80 and 443 ports",
 "sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080",
 "sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443",
 ].join("\n")

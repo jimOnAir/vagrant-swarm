@@ -37,14 +37,40 @@ The following roles are used:
 
 - `apt-proxy` - setup apt-cacher-ng with docker repo proxy
 - `apt-setup` - Vagrant related. Disable unattended updates
+- `deploy-portainer` - Deploy portainer stack on cluster
+- `deploy-traefik` - Deploy traefik reverse-proxy stack
 - `docker-install` - Install and configure Docker CE
 - `swarm-first-manager` - Initialize Docker Swarm cluster and copy join tokens to ansible host
-- `swarm-manager` - join manager to previously configured cluster using join token
-- `swarm-worker` - join worker to previously configured cluster using join token
+- `swarm-join-node` - join swarm node to previously configured cluster using join token
 
 ## Ansible playbooks
 
 - `apt-proxy-playbook.yml` - setup `apt-proxy`
 - `first-manager-playbook.yml` - setup `manager-1`
-- `manager-playbook.yml` - setup `manager-2`, etc...
-- `worker-playbook.yml` - setup `worker-`, etc...
+- `swarm-node-playbook.yml` - setup swarm nodes
+
+## Aliases
+
+Redirect ports to host:80 and host:443
+Add the following lines to /etc/hosts
+
+```
+127.0.0.1      portainer.<DOMAIN_NAME>
+127.0.0.1      traefik.<DOMAIN_NAME>
+```
+
+## Port redirection
+
+Add port redirection to services to be available on 80 and 443 ports:
+
+```console
+sudo iptables -t nat -I OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080
+sudo iptables -t nat -I OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443
+```
+
+Remove port redirection:
+
+```console
+sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080
+sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443
+```
