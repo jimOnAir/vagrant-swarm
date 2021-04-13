@@ -2,6 +2,15 @@
 
 Automatic Docker Swarm cluster setup with Vagrant and Ansible
 
+## Prerequirements
+
+The following software should be installed:
+
+- [Vagrant](https://www.vagrantup.com/downloads)
+- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
+- [Python cryptography library](https://pypi.org/project/cryptography/)
+- [Molecule](https://pypi.org/project/molecule/)
+
 ## Running
 
 Just run:

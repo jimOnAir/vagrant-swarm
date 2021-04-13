@@ -1,13 +1,19 @@
 ---
 # tasks file for deploy-traefik
-
 - name: deploy-traefik | files paths
   set_fact:
+    files_path: "{{ [ role_path, 'files' ] | join('/') }}"
     key_path: "{{ [ role_path, 'files' , domain  + '.key'] | join('/') }}"
     cert_path: "{{ [ role_path, 'files' , domain  + '.crt'] | join('/') }}"
     csr_path: "{{ [ role_path, 'files' , domain  + '.csr'] | join('/') }}"
     config_path: "{{ [ role_path, 'templates' , 'traefik.yaml.j2'] | join('/') }}"
     dynamic_config_path: "{{ [ role_path, 'templates' , 'traefik_dynamic_conf.yaml.j2'] | join('/') }}"
+
+- name: deploy-traefik | ensure files path exists
+  file:
+    path: "{{ files_path }}"
+    state: directory
+  delegate_to: localhost
 
 - name: deploy-traefik | generate private key
   openssl_privatekey:
