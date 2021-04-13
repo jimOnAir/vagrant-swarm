@@ -1,0 +1,12 @@
+---
+# tasks file for swarm-join-node
+
+- name: swarm-join-node | Join swarm cluster
+  docker_swarm:
+    state: join
+    join_token: "{{ lookup('file', join_token ) }}"
+    advertise_addr: "{{ advertise_addr }}"
+    remote_addrs: [ "{{ first_manager_ip }}" ]
+  register: join_cluster
+  until: join_cluster is not failed
+  retries: 5

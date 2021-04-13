@@ -1,0 +1,115 @@
+---
+# tasks file for deploy-traefik
+
+- name: deploy-traefik | files paths
+  set_fact:
+    key_path: "{{ [ role_path, 'files' , domain  + '.key'] | join('/') }}"
+    cert_path: "{{ [ role_path, 'files' , domain  + '.crt'] | join('/') }}"
+    csr_path: "{{ [ role_path, 'files' , domain  + '.csr'] | join('/') }}"
+    config_path: "{{ [ role_path, 'templates' , 'traefik.yaml.j2'] | join('/') }}"
+    dynamic_config_path: "{{ [ role_path, 'templates' , 'traefik_dynamic_conf.yaml.j2'] | join('/') }}"
+
+- name: deploy-traefik | generate private key
+  openssl_privatekey:
+    path: "{{ key_path }}"
+    size: 2048
+  delegate_to: localhost
+
+- name: deploy-traefik | generate certificate request
+  openssl_csr:
+    path: "{{ csr_path }}"
+    privatekey_path: "{{ key_path }}"
+    common_name: "*.{{ domain }}"
+    subject_alt_name: "{{ item.value | map('regex_replace', '^', 'DNS:') | list }}"
+    basic_constraints:
+      - CA:FALSE
+    extended_key_usage:
+      - serverAuth
+      - clientAuth
+    key_usage:
+      - digitalSignature
+      - nonRepudiation
+      - keyEncipherment
+      - dataEncipherment
+  with_dict:
+    dns_server:
+    - "*.{{ domain }}"
+    - "{{ domain }}"
+  delegate_to: localhost
+
+
+- name: deploy-traefik | generate certificate request
+  openssl_certificate:
+    path: "{{ cert_path }}"
+    csr_path: "{{ csr_path }}"
+    privatekey_path: "{{ key_path }}"
+    provider: selfsigned
+  delegate_to: localhost
+
+
+- name: deploy-traefik | Create reverse-proxy network
+  docker_network:
+    name: "reverse-proxy"
+    state: present
+    attachable: True
+    scope: swarm
+    driver: overlay
+
+- name: deploy-traefik | Set traefik_auth_basic
+  set_fact:
+    traefik_auth_basic:  "{{ traefik_auth_basic | default([]) + [ [traefik_user.username, traefik_user.password | password_hash('md5') | regex_replace('\\$', '$$')] | join(':')] }}"
+  # no_log: true
+  loop: "{{ traefik_access_list | from_json | json_query('users') }}"
+  loop_control:
+    loop_var: traefik_user
+
+
+- name: deploy-traefik | Set reverse_proxy_secrets
+  set_fact:
+    reverse_proxy_secrets:
+      - { name: "{{ domain + '.crt'}}" , data: "{{ lookup('file', cert_path) }}" }
+      - { name: "{{ domain + '.key'}}", data: "{{ lookup('file', key_path) }}" }
+      - { name: 'traefik.yaml', data: "{{ lookup('template', config_path) }}"}
+      - { name: 'traefik_dynamic_conf.yaml', data: "{{ lookup('template', dynamic_config_path) }}"}
+
+
+- name: deploy-traefik | Set digests
+  set_fact:
+    digests: "{{ digests | default({}) | combine( {('reverse_proxy_' + secret.name  | string) :  ( secret.data | checksum  | truncate(10, true,''))} ) }}"
+  no_log: true
+  loop: "{{ reverse_proxy_secrets  }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-traefik | Create secrets
+  docker_secret:
+    name: "reverse_proxy_{{ secret.name }}_{{ digests['reverse_proxy_' + secret.name] }}"
+    state: present
+    data: "{{ secret.data }}"
+  no_log: true
+  loop:  "{{ reverse_proxy_secrets }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-traefik | create temp file
+  tempfile:
+    state: file
+    suffix: ".yml"
+  register: compose_file
+
+- name: deploy-traefik | create temporary compose file
+  template:
+    src:  "{{ [ role_path, 'templates' , 'docker-compose.yml.j2'] | join('/') }}"
+    dest: compose_file.path
+
+- name: deploy-traefik | Deploy portainer stack
+  docker_stack:
+    name: reverse-proxy
+    compose: compose_file.path
+    prune: True
+    with_registry_auth: True
+
+- name: deploy-traefik | remove temporary compose file
+  file:
+    path: compose_file.path
+    state: absent

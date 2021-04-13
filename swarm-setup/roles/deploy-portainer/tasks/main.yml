@@ -1,0 +1,32 @@
+---
+# tasks file for deploy-portainer
+- name: deploy-portainer | create reverse-proxy network
+  docker_network:
+    name: "reverse-proxy"
+    state: present
+    attachable: True
+    scope: swarm
+    driver: overlay
+
+- name: deploy-portainer | create temp file
+  tempfile:
+    state: file
+    suffix: ".yml"
+  register: compose_file
+
+- name: deploy-portainer | create temporary compose file
+  template:
+    src:  "{{ [ role_path, 'templates' , 'docker-compose.yml.j2'] | join('/') }}"
+    dest: compose_file.path
+
+- name: deploy-portainer | Deploy portainer stack
+  docker_stack:
+    name: portainer
+    compose: compose_file.path
+    prune: True
+    with_registry_auth: True
+
+- name: deploy-portainer | remove temporary compose file
+  file:
+    path: compose_file.path
+    state: absent

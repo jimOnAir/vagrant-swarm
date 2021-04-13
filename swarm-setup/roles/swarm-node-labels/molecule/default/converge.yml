@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include swarm-node-labels"
+      include_role:
+        name: "swarm-node-labels"

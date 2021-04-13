@@ -1,9 +1,0 @@
----
-# tasks file for swarm-manager
-
-- name: Swarm manager | Join swarm cluster
-  docker_swarm:
-    state: join
-    join_token: "{{ lookup('file', './join-token-manager') }}"
-    advertise_addr: "{{ advertise_addr }}"
-    remote_addrs: [ "{{ first_manager_ip }}" ]

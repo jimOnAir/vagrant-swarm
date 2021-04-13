@@ -1,0 +1,58 @@
+version: '3.8'
+services:
+
+  portainer:
+    image: portainer/portainer-ce:{{ portainer_ce_version |default("2.1.1") }}
+    command: -H tcp://tasks.portainer_agent:9001 --tlsskipverify
+    networks:
+      - reverse-proxy
+      - agent_network
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    stop_grace_period: 1m
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == {{ portainer_node }}
+      labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.portainer-http.entrypoints=http"
+      - "traefik.http.routers.portainer-http.middlewares=redirect-scheme-https@file,compress@file"
+      - "traefik.http.routers.portainer-http.rule=Host(`portainer.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.portainer-http.service=portainer"
+
+      - "traefik.http.routers.portainer-https.entrypoints=https"
+      - "traefik.http.routers.portainer-https.middlewares=compress@file"
+      - "traefik.http.routers.portainer-https.rule=Host(`portainer.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.portainer-https.service=portainer"
+      - "traefik.http.routers.portainer-https.tls=true"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+  portainer_agent:
+    image: portainer/agent:{{ portainer_agent_version | default("2.1.0") }}
+    environment:
+      AGENT_CLUSTER_ADDR: tasks.portainer_agent
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - agent_network
+    deploy:
+      mode: global
+
+networks:
+  reverse-proxy:
+    external: true
+  agent_network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  portainer_data:
+volumes:
+  portainer_data:
+    external: true
+    name: {% raw %}'{{index .Service.Labels "com.docker.stack.namespace"}}-data-{{.Task.Slot}}'{% endraw %}

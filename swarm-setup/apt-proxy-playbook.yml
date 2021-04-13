@@ -1,3 +1,5 @@
+---
+
 - name: Setup apt-proxy
   hosts: apt-proxy
   gather_facts: True

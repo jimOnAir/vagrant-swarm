@@ -1,0 +1,12 @@
+---
+# tasks file for swarm-node-labels
+
+- name: swarm-node-labels | define docker swarm node labels
+  docker_node:
+    labels: "{{ node['labels'] }}"
+    hostname: "{{ node.name }}"
+    labels_state: replace
+  loop:  "{{ node_labels | from_json | json_query('.') }}"
+  loop_control:
+    loop_var: node
+

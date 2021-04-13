@@ -1,0 +1,5 @@
+---
+# defaults file for deploy-portainer
+portainer_ce_version: 2.1.1
+portainer_agent_version: 2.1.0
+domain: local

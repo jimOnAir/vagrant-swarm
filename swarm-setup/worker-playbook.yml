@@ -1,7 +1,0 @@
-- name: Setup workers
-  hosts: workers
-  gather_facts: True
-  roles:
-    - { role: apt-setup }
-    - { role: docker-install }
-    - { role: swarm-worker }

@@ -1,0 +1,30 @@
+---
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+entryPoints:
+  http:
+    address: ':80'
+  https:
+    address: ':443'
+providers:
+  docker:
+    endpoint: unix:///var/run/docker.sock
+    swarmMode: true
+    exposedByDefault: false
+    swarmModeRefreshSeconds: 10s
+    network: reverse-proxy
+  file:
+    filename: /etc/traefik/traefik_dynamic_conf.yaml
+log:
+  level: DEBUG
+api:
+  dashboard: true
+metrics:
+  prometheus: {}
+accessLog: {}
+ping: {}
+serversTransport:
+  insecureSkipVerify: true
+pilot:
+  dashboard: false

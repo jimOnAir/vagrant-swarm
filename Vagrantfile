@@ -6,22 +6,27 @@ ADDITIONAL_MANAGERS_COUNT = 2
 SUBNET_BASE = "192.168.200."
 APT_PROXY_IP = SUBNET_BASE + "2"
 FIRST_MANAGER_IP = SUBNET_BASE + "3"
-DOMAIN = 'local'
+DOMAIN_NAME = 'local'
 
 #Ansible groups config
 ANSIBLE_GROUPS = {
   "additional_managers" => ["manager-[2:#{ADDITIONAL_MANAGERS_COUNT + 1}]"],
-  "apt-proxy" => ["apt-proxy"],
+  "apt-proxy-group" => ["apt-proxy"],
   "first_manager" => ["manager-1"],
   "managers" => ["manager-[1:#{ADDITIONAL_MANAGERS_COUNT + 1}]"],
   "workers" => ["worker-[1:#{WORKERS_COUNT}]"],
 }
 
 ANSIBLE_RAW_ARGS = [
-  # '-vvv',
+  # '-vvvv',
   '--diff',
 ]
+STACKS_PLACEMENT = {
+  "portainer" => 'manager-1'
+}
 
+NODE_LABELS = '{[ {"name": "manager-1", "labels": {"portainer": "true"}} ]}'
+TRAEFIK_AUTH_BASIC = '{ "users": [ {"username": "admin", "password": "admin" } ]}'
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
@@ -90,8 +95,6 @@ Vagrant.configure("2") do |config|
   # SHELL
   config.ssh.insert_key = false
 
-
-
   config.vm.provider "virtualbox" do |vm|
     vm.memory = "1024"
     vm.cpus = 1
@@ -106,6 +109,9 @@ Vagrant.configure("2") do |config|
       ansible.playbook = "swarm-setup/apt-proxy-playbook.yml"
       ansible.groups = ANSIBLE_GROUPS
       ansible.raw_arguments = ANSIBLE_RAW_ARGS
+      ansible.extra_vars = {
+        node_labels: NODE_LABELS
+      }
     end
   end
 
@@ -126,6 +132,9 @@ Vagrant.configure("2") do |config|
         docker_user: "vagrant",
         domain: DOMAIN_NAME,
         first_manager_ip: FIRST_MANAGER_IP,
+        node_labels: NODE_LABELS,
+        portainer_node: STACKS_PLACEMENT['portainer'],
+        traefik_access_list: TRAEFIK_AUTH_BASIC,
       }
     end
   end
@@ -139,7 +148,7 @@ Vagrant.configure("2") do |config|
       manager.vm.network "forwarded_port", guest: 3000, host: "#{ 3000 + index*10 }", auto_correct: true
       manager.vm.hostname = "manager-#{index + 1}"
       manager.vm.provision "ansible" do |ansible|
-        ansible.playbook = "swarm-setup/manager-playbook.yml"
+        ansible.playbook = "swarm-setup/swarm-node-playbook.yml"
         ansible.groups = ANSIBLE_GROUPS
         ansible.raw_arguments = ANSIBLE_RAW_ARGS
         ansible.extra_vars = {
@@ -147,6 +156,7 @@ Vagrant.configure("2") do |config|
           apt_proxy: APT_PROXY_IP,
           docker_user: "vagrant",
           first_manager_ip: FIRST_MANAGER_IP,
+          join_token: 'join-token-manager',
         }
       end
     end
@@ -161,7 +171,7 @@ Vagrant.configure("2") do |config|
       worker.vm.network "forwarded_port", guest: 3000, host: "#{ 3000 + index*10 }", auto_correct: true
       worker.vm.hostname = "worker-#{index}"
       worker.vm.provision "ansible" do |ansible|
-        ansible.playbook = "swarm-setup/worker-playbook.yml"
+        ansible.playbook = "swarm-setup/swarm-node-playbook.yml"
         ansible.groups = ANSIBLE_GROUPS
         ansible.raw_arguments = ANSIBLE_RAW_ARGS
         ansible.extra_vars = {
@@ -169,8 +179,25 @@ Vagrant.configure("2") do |config|
           apt_proxy: APT_PROXY_IP,
           docker_user: "vagrant",
           first_manager_ip: FIRST_MANAGER_IP,
+          join_token: 'join-token-worker',
         }
       end
     end
   end
 end
+
+puts [
+"Redirect ports to host:80 and host:443",
+"Add the following lines to /etc/hosts",
+"127.0.0.1      portainer.#{DOMAIN_NAME}",
+"127.0.0.1      traefik.#{DOMAIN_NAME}",
+"",
+"Add port redirection to services to be available on 80 and 443 ports:",
+"sudo iptables -t nat -I OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080",
+"sudo iptables -t nat -I OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443",
+"",
+"Remove port redirection:",
+"Add port redirection to services to be available on 80 and 443 ports",
+"sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080",
+"sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443",
+].join("\n")

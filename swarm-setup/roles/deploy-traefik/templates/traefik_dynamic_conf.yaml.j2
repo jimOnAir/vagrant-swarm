@@ -1,0 +1,17 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/{{ domain }}.crt
+        keyFile: /certs/{{ domain }}.key
+http:
+  middlewares:
+    redirect-scheme-https:
+      redirectScheme:
+        scheme: "https"
+    cors-allow-all-origin:
+      headers:
+        accessControlAllowOrigin: "*"
+    compress:
+      compress: {}
+

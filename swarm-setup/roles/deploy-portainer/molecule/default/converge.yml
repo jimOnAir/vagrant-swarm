@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include deploy-portainer"
+      include_role:
+        name: "deploy-portainer"

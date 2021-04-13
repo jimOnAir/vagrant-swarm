@@ -1,0 +1,87 @@
+version: '3.7'
+services:
+
+  reverse-proxy:
+    image: jimonair/traefik:v2.4.8-buster
+    stop_grace_period: 1m
+    secrets:
+      - source: reverse_proxy_{{ domain }}.crt_{{ digests['reverse_proxy_' + domain + '.crt'] }}
+        target: /certs/{{ domain }}.crt
+      - source: reverse_proxy_{{ domain }}.key_{{ digests['reverse_proxy_' + domain + '.key'] }}
+        target: /certs/{{ domain }}.key
+      - source: reverse_proxy_traefik_dynamic_conf.yaml_{{ digests['reverse_proxy_traefik_dynamic_conf.yaml'] }}
+        target: /etc/traefik/traefik_dynamic_conf.yaml
+      - source: reverse_proxy_traefik.yaml_{{ digests['reverse_proxy_traefik.yaml'] }}
+        target: /etc/traefik/traefik.yaml
+    ports:
+      - target: 80
+        published: 80
+        mode: host
+      - target: 443
+        published: 443
+        mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    networks:
+      - reverse-proxy
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.middlewares.traefik-dashboard-auth.basicauth.users={{ traefik_auth_basic | join(',') }}"
+
+        - "traefik.http.routers.catchall-http.entrypoints=http"
+        - "traefik.http.routers.catchall-http.middlewares=redirect-scheme-https@file,compress@file"
+        - "traefik.http.routers.catchall-http.priority=1"
+        - "traefik.http.routers.catchall-http.rule=HostRegexp(`{catchall:.*}`)"
+        - "traefik.http.routers.catchall-http.service=catchall"
+
+        - "traefik.http.routers.catchall-https.entrypoints=https"
+        - "traefik.http.routers.catchall-https.middlewares=cors-allow-all-origin@file,compress@file"
+        - "traefik.http.routers.catchall-https.priority=1"
+        - "traefik.http.routers.catchall-https.rule=HostRegexp(`{catchall:.*}`)"
+        - "traefik.http.routers.catchall-https.service=catchall"
+        - "traefik.http.routers.catchall-https.tls=true"
+
+        - "traefik.http.routers.traefik-dashboard-http.entrypoints=http"
+        - "traefik.http.routers.traefik-dashboard-http.middlewares=redirect-scheme-https@file,compress@file"
+        - "traefik.http.routers.traefik-dashboard-http.rule=Host(`traefik.{{ domain }}`)"
+        - "traefik.http.routers.traefik-dashboard-http.service=api@internal"
+
+        - "traefik.http.routers.traefik-dashboard-https.entrypoints=https"
+        - "traefik.http.routers.traefik-dashboard-https.middlewares=traefik-dashboard-auth,compress@file"
+        - "traefik.http.routers.traefik-dashboard-https.rule=Host(`traefik.{{ domain }}`)"
+        - "traefik.http.routers.traefik-dashboard-https.service=api@internal"
+        - "traefik.http.routers.traefik-dashboard-https.tls=true"
+        - "traefik.http.services.catchall.loadbalancer.server.port=8081"
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 15s
+        order: stop-first
+        failure_action: rollback
+        max_failure_ratio: 1
+        monitor: 5s
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+networks:
+  reverse-proxy:
+    external: true
+
+secrets:
+  reverse_proxy_{{ domain }}.crt_{{ digests['reverse_proxy_' + domain + '.crt'] }}:
+    external: true
+  reverse_proxy_{{ domain }}.key_{{ digests['reverse_proxy_' + domain + '.key'] }}:
+    external: true
+  reverse_proxy_traefik_dynamic_conf.yaml_{{ digests['reverse_proxy_traefik_dynamic_conf.yaml'] }}:
+    external: true
+  reverse_proxy_traefik.yaml_{{ digests['reverse_proxy_traefik.yaml'] }}:
+    external: true

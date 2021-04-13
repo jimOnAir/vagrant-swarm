@@ -1,6 +1,6 @@
 ---
 # tasks file for apt-setup
-- name: Disable timers for unattended upgrade, so that none will be triggered by the `date -s` call.
+- name: apt-setup | Disable timers for unattended upgrade, so that none will be triggered by the `date -s` call.
   systemd:
     enabled: no
     name:  "{{item}}"
@@ -10,12 +10,12 @@
   become: True
 
 
-- name: Reload systemctl daemon to apply the new changes
+- name: apt-setup | Reload systemctl daemon to apply the new changes
   systemd:
     daemon_reload: True
   become: True
 
-- name: Wait for any possibly running unattended upgrade to finish
+- name: apt-setup | Wait for any possibly running unattended upgrade to finish
   command:
     argv:
       - systemd-run
@@ -25,14 +25,14 @@
       - /bin/true
   become: True
 
-- name: Purge unattended upgrades
+- name: apt-setup | Purge unattended upgrades
   apt:
     name: unattended-upgrades
     state: absent
     update_cache: True
   become: True
 
-- name: Enable apt proxy
+- name: apt-setup | Enable apt proxy
   template:
     src: "{{ role_path }}/templates/01proxy.j2"
     dest: /etc/apt/apt.conf.d/01proxy
