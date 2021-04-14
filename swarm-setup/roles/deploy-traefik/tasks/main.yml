@@ -64,7 +64,7 @@
 - name: deploy-traefik | Set traefik_auth_basic
   set_fact:
     traefik_auth_basic:  "{{ traefik_auth_basic | default([]) + [ [traefik_user.username, traefik_user.password | password_hash('md5') | regex_replace('\\$', '$$')] | join(':')] }}"
-  # no_log: true
+  no_log: true
   loop: "{{ traefik_access_list | from_json | json_query('users') }}"
   loop_control:
     loop_var: traefik_user
@@ -77,7 +77,7 @@
       - { name: "{{ domain + '.key'}}", data: "{{ lookup('file', key_path) }}" }
       - { name: 'traefik.yaml', data: "{{ lookup('template', config_path) }}"}
       - { name: 'traefik_dynamic_conf.yaml', data: "{{ lookup('template', dynamic_config_path) }}"}
-
+  no_log: true
 
 - name: deploy-traefik | Set digests
   set_fact:

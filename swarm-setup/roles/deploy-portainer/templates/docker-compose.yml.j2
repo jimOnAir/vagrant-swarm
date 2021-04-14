@@ -3,7 +3,7 @@ services:
 
   portainer:
     image: portainer/portainer-ce:{{ portainer_ce_version |default("2.1.1") }}
-    command: -H tcp://tasks.portainer_agent:9001 --tlsskipverify
+    command: -H tcp://tasks.portainer_agent:9001 --tlsskipverify --admin-password-file='/run/secrets/PORTAINER_ADMIN_PASSWORD'
     networks:
       - reverse-proxy
       - agent_network
@@ -12,6 +12,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+    secrets:
+      - source: portainer_PORTAINER_ADMIN_PASSWORD_{{ digests['portainer_PORTAINER_ADMIN_PASSWORD'] }}
+        target: /run/secrets/PORTAINER_ADMIN_PASSWORD
     stop_grace_period: 1m
     deploy:
       placement:
@@ -49,6 +52,10 @@ networks:
   agent_network:
     driver: overlay
     attachable: true
+
+secrets:
+  portainer_PORTAINER_ADMIN_PASSWORD_{{ digests['portainer_PORTAINER_ADMIN_PASSWORD'] }}:
+    external: true
 
 volumes:
   portainer_data:

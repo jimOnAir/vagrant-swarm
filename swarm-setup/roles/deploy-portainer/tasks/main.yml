@@ -8,6 +8,35 @@
     scope: swarm
     driver: overlay
 
+- name: deploy-portainer | generate password hash
+  set_fact:
+    portainer_admin_password_hash: "{{ portainer_admin_password | password_hash('md5') }}"
+  no_log: true
+
+- name: deploy-portainer | Set portainer_secrets
+  set_fact:
+    portainer_secrets:
+      - { name: PORTAINER_ADMIN_PASSWORD , data: "{{ portainer_admin_password }}" }
+  no_log: true
+
+- name: deploy-portainer | Set digests
+  set_fact:
+    digests: "{{ digests | default({}) | combine( {('portainer_' + secret.name  | string) :  ( secret.data | checksum  | truncate(10, true,''))} ) }}"
+  no_log: true
+  loop: "{{ portainer_secrets  }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-portainer | Create secrets
+  docker_secret:
+    name: "portainer_{{ secret.name }}_{{ digests['portainer_' + secret.name] }}"
+    state: present
+    data: "{{ secret.data }}"
+  no_log: true
+  loop:  "{{ portainer_secrets }}"
+  loop_control:
+    loop_var: secret
+
 - name: deploy-portainer | create temp file
   tempfile:
     state: file
