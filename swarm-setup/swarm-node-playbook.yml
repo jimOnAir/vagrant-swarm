@@ -4,6 +4,7 @@
     - workers
   gather_facts: True
   roles:
+    - { role: auth }
     - { role: apt-setup }
     - { role: docker-install }
     - { role: swarm-join-node }

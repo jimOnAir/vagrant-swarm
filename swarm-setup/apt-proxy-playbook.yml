@@ -4,5 +4,6 @@
   hosts: apt-proxy
   gather_facts: True
   roles:
+    - { role: auth }
     - { role: apt-setup }
     - { role: apt-proxy }

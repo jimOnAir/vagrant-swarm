@@ -2,3 +2,5 @@
 .vscode
 swarm-setup/join-token-*
 swarm-setup/roles/deploy-traefik/files/*
+swarm-setup/roles/auth/files/*
+

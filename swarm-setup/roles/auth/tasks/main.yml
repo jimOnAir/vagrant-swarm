@@ -1,0 +1,33 @@
+---
+# tasks file for auth
+- name: auth | Ensure files path exists
+  file:
+    path: "{{ [ role_path, 'files' ] | join('/')}}"
+    state: directory
+  delegate_to: localhost
+
+- name: auth | Generate ssh keys
+  user:
+    name: "{{ lookup('env','USER') }}"
+    generate_ssh_key: true
+    ssh_key_type: "{{ item.0 }}"
+    ssh_key_bits: "{{ item.1 }}"
+    ssh_key_file: "{{ [ role_path, 'files', item.0 + '_' + item.1 | string + '_key' ] | join('/')}}"
+  with_together:
+  - [ 'rsa', 'dsa' ]
+  - [ 2048, 1024 ]
+  loop_control:
+    label: "{{ item.0 }}_{{ item.1 }}_key"
+  delegate_to: localhost
+
+- name: auth | Add ssh key
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', [ role_path, 'files', item.0 + '_' + item.1 | string + '_key.pub' ] | join('/'))}} "
+  no_log: true
+  with_together:
+  - [ 'rsa', 'dsa' ]
+  - [ 2048, 1024 ]
+  loop_control:
+    label: "{{ item.0 }}_{{ item.1 }}_key"

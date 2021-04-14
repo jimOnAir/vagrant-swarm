@@ -1,5 +1,0 @@
-- name: Setup first manager
-  hosts: first_manager
-  gather_facts: False
-  roles:
-    - { role: swarm-node-labels }

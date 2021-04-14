@@ -3,6 +3,7 @@
   hosts: first_manager
   gather_facts: True
   roles:
+    - { role: auth }
     - { role: apt-setup }
     - { role: docker-install }
     - { role: swarm-first-manager }
