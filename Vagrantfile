@@ -28,7 +28,7 @@ STACKS_PLACEMENT = {
 NODE_LABELS = '{[ {"name": "manager-1", "labels": {"portainer": "true"}} ]}'
 TRAEFIK_AUTH_BASIC = '{ "users": [ {"username": "admin", "password": "admin" } ]}'
 PORTAINER_ADMIN_PASSWORD = 'admin'
-DOCKER_CREDENTIALS = '{ "name": "user", "password": "1234567" }'
+DOCKER_CREDENTIALS = '{ "name": "user", "password": "12345678" }'
 
 Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
@@ -59,6 +59,8 @@ Vagrant.configure("2") do |config|
     leader.vm.network "forwarded_port", guest: 80, host: 8080, auto_correct: true
     leader.vm.network "forwarded_port", guest: 443, host: 8443, auto_correct: true
     leader.vm.network "forwarded_port", guest: 3000, host: 3000, auto_correct: true
+    leader.vm.network "forwarded_port", guest: 4000, host: 4000, auto_correct: true
+
 
     leader.vm.hostname = "manager-1"
     leader.vm.provision "ansible" do |ansible|
@@ -86,6 +88,8 @@ Vagrant.configure("2") do |config|
       manager.vm.network "forwarded_port", guest: 80, host: "#{ 8080 + index*10 }", auto_correct: true
       manager.vm.network "forwarded_port", guest: 443, host: "#{ 8443 + index*10 }", auto_correct: true
       manager.vm.network "forwarded_port", guest: 3000, host: "#{ 3000 + index*10 }", auto_correct: true
+      manager.vm.network "forwarded_port", guest: 4000, host: "#{ 4000 + index*10 }", auto_correct: true
+
       manager.vm.hostname = "manager-#{index + 1}"
       manager.vm.provision "ansible" do |ansible|
         ansible.playbook = "swarm-setup/swarm-node-playbook.yml"
@@ -141,4 +145,14 @@ puts [
 "Remove port redirection:",
 "sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080",
 "sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443",
+"",
+"Create docker context:",
+"docker context create vagrant --docker \"host=ssh://vagrant@localhost:2222\"",
+"",
+"Add vagrant ssh key:",
+"eval $(ssh-agent)",
+"ssh-add ~/.vagrant.d/insecure_private_key",
+"",
+"Invoke docker command on remove host:",
+"docker --context vagrant ps"
 ].join("\n")

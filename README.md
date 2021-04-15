@@ -83,3 +83,24 @@ Remove port redirection:
 sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 80 -j REDIRECT --to-ports 8080
 sudo iptables -t nat -D OUTPUT -p tcp -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports 8443
 ```
+
+## Work with remote docker
+
+Create docker context:
+
+``` console
+$ docker context create vagrant --docker host=ssh://vagrant@localhost:2222
+```
+
+Add vagrant ssh key:
+
+``` console
+$ eval $(ssh-agent)
+$ ssh-add ~/.vagrant.d/insecure_private_key
+```
+
+Invoke docker command on remove host
+
+```console
+docker --context vagrant ps
+```
