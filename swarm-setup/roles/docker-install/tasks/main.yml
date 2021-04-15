@@ -103,3 +103,9 @@
     name: "docker"
     state: "restarted"
   become: True
+
+- name: docker-install | Docker login
+  docker_login:
+    name: "{{ docker_credentials.name }}"
+    password: "{{ docker_credentials.password }}"
+  when: docker_credentials is defined
