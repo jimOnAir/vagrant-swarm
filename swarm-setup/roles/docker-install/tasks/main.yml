@@ -106,6 +106,6 @@
 
 - name: docker-install | Docker login
   docker_login:
-    name: "{{ docker_credentials.name }}"
-    password: "{{ docker_credentials.password }}"
+    name: "{{ (docker_credentials | from_json)['name'] }}"
+    password: "{{ (docker_credentials | from_json)['password'] }}"
   when: docker_credentials is defined
