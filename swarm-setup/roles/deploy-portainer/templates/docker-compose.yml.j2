@@ -34,6 +34,11 @@ services:
       - "traefik.http.routers.portainer-https.service=portainer"
       - "traefik.http.routers.portainer-https.tls=true"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
 
   portainer_agent:
     image: portainer/agent:{{ portainer_agent_version | default("2.1.0") }}
@@ -45,6 +50,11 @@ services:
       - agent_network
     deploy:
       mode: global
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
 
 networks:
   reverse-proxy:
