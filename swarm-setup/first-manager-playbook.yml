@@ -5,8 +5,10 @@
   roles:
     - { role: auth }
     - { role: apt-setup }
+    - { role: fluentbit }
     - { role: docker-install }
     - { role: swarm-first-manager }
     - { role: deploy-traefik }
     - { role: deploy-portainer }
+    - { role: deploy-elasticsearch }
 

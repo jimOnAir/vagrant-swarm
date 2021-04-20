@@ -22,13 +22,14 @@ ANSIBLE_RAW_ARGS = [
   '--diff',
 ]
 STACKS_PLACEMENT = {
-  "portainer" => 'manager-1'
+  "portainer" => 'manager-1',
+  "elasticsearch" => 'manager-1'
 }
 
 NODE_LABELS = '{[ {"name": "manager-1", "labels": {"portainer": "true"}} ]}'
+ELASTIC_PASSWORD = 'elastic'
 TRAEFIK_AUTH_BASIC = '{ "users": [ {"username": "admin", "password": "admin" } ]}'
 PORTAINER_ADMIN_PASSWORD = 'admin'
-DOCKER_CREDENTIALS = '{ "name": "user", "password": "12345678" }'
 
 Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
@@ -36,12 +37,16 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vm|
     vm.memory = "1024"
     vm.cpus = 1
+    vm.linked_clone = true
   end
 
   config.vm.define "apt-proxy" do |apt_proxy|
+    apt_proxy.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--memory", "512"]
+    end
     apt_proxy.vm.box = IMAGE_NAME
     apt_proxy.vm.network "private_network", ip: APT_PROXY_IP
-    apt_proxy.vm.network "forwarded_port", guest: 3142, host: 3142, auto_correct: true
+    # apt_proxy.vm.network "forwarded_port", guest: 3142, host: 3142, auto_correct: true
     apt_proxy.vm.hostname = "apt-proxy"
     apt_proxy.vm.provision "ansible" do |ansible|
       ansible.playbook = "swarm-setup/apt-proxy-playbook.yml"
@@ -60,7 +65,11 @@ Vagrant.configure("2") do |config|
     leader.vm.network "forwarded_port", guest: 443, host: 8443, auto_correct: true
     leader.vm.network "forwarded_port", guest: 3000, host: 3000, auto_correct: true
     leader.vm.network "forwarded_port", guest: 4000, host: 4000, auto_correct: true
+    leader.vm.provider :virtualbox do |vb|
+      vb.customize ["modifyvm", :id, "--memory", "4096"]
+      vb.customize ["modifyvm", :id, "--cpus", "2"]
 
+    end
 
     leader.vm.hostname = "manager-1"
     leader.vm.provision "ansible" do |ansible|
@@ -70,12 +79,13 @@ Vagrant.configure("2") do |config|
       ansible.extra_vars = {
         apt_proxy: APT_PROXY_IP,
         docker_user: "vagrant",
-        docker_credentials: DOCKER_CREDENTIALS,
         domain: DOMAIN_NAME,
+        elasticsearch_node: STACKS_PLACEMENT['elasticsearch'],
+        elasticsearch_password: ELASTIC_PASSWORD,
         first_manager_ip: FIRST_MANAGER_IP,
         node_labels: NODE_LABELS,
-        portainer_node: STACKS_PLACEMENT['portainer'],
         portainer_admin_password: PORTAINER_ADMIN_PASSWORD,
+        portainer_node: STACKS_PLACEMENT['portainer'],
         traefik_access_list: TRAEFIK_AUTH_BASIC,
       }
     end
@@ -97,7 +107,6 @@ Vagrant.configure("2") do |config|
         ansible.raw_arguments = ANSIBLE_RAW_ARGS
         ansible.extra_vars = {
           advertise_addr: SUBNET_BASE + "1#{index + 10}",
-          docker_credentials: DOCKER_CREDENTIALS,
           apt_proxy: APT_PROXY_IP,
           docker_user: "vagrant",
           first_manager_ip: FIRST_MANAGER_IP,
@@ -122,7 +131,6 @@ Vagrant.configure("2") do |config|
         ansible.extra_vars = {
           advertise_addr: SUBNET_BASE + "#{index + 10}",
           apt_proxy: APT_PROXY_IP,
-          docker_credentials: DOCKER_CREDENTIALS,
           docker_user: "vagrant",
           first_manager_ip: FIRST_MANAGER_IP,
           join_token: 'join-token-worker',

@@ -6,5 +6,6 @@
   roles:
     - { role: auth }
     - { role: apt-setup }
+    - { role: fluentbit }
     - { role: docker-install }
     - { role: swarm-join-node }

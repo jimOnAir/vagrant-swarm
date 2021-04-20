@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include deploy-elasticsearch"
+      include_role:
+        name: "deploy-elasticsearch"
