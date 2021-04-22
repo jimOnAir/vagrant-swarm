@@ -1,0 +1,19 @@
+global:
+  smtp_from: '{{ prometheus_smtp_from }}'
+  smtp_smarthost: '{{ prometheus_smtp_host }}'
+  smtp_hello: '{{ prometheus_smtp_hello }}'
+  smtp_auth_username: '{{ prometheus_smtp_auth_username }}'
+  smtp_auth_password: '{{ prometheus_smtp_auth_password }}'
+  smtp_auth_identity: '{{ prometheus_smtp_auth_identity }}'
+route:
+  group_wait: 5m
+  group_interval: 30m
+  repeat_interval: 12h
+  group_by: [Alertname]
+  receiver: support
+
+receivers:
+  - name: support
+    email_configs:
+      - to: '{{ prometheus_alert_receiver }}'
+        send_resolved: true

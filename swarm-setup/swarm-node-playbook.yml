@@ -1,4 +1,4 @@
-- name: Setup additional managers
+- name: Setup additional nodes
   hosts:
     - additional_managers
     - workers
@@ -6,6 +6,8 @@
   roles:
     - { role: auth }
     - { role: apt-setup }
+    - { role: cadvisor }
+    - { role: node-exporter }
     - { role: fluentbit }
     - { role: docker-install }
     - { role: swarm-join-node }

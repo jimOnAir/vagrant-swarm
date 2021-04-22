@@ -1,0 +1,140 @@
+groups:
+
+- name: Monitoring targets
+  rules:
+  - alert: monitor_service_down
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Monitor service non-operational"
+      description: "Service {{ $labels.job }} {{ $labels.instance }} is down"
+
+- name: Node rules
+  rules:
+  - alert: node_cpu_usage_95_10m
+    expr: 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[1m]) * ON(instance) GROUP_LEFT(nodename) node_uname_info * 100) BY (nodename)) > 95
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: "CPU alert for Node {{ $labels.nodename }}"
+      description: " Node {{ $labels.nodename }} CPU usage is at {{ humanize $value }}% for 10m."
+
+  - alert: node_disk_usage
+    expr: ((node_filesystem_size_bytes{device=~"/dev/[sd|xvd|nvme].*"} - node_filesystem_free_bytes{device=~"/dev/[sd|xvd|nvme].*"}) * 100 /
+       node_filesystem_size_bytes{device=~"/dev/[sd|xvd|nvme].*"}) * ON(instance) GROUP_LEFT(nodename) node_uname_info > 85
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: " Disk {{$labels.mounpoint}} {{$labels.device}} alert for Node {{ $labels.nodename }}"
+      description: " Node {{ $labels.nodename }} disk {{$labels.mounpoint}} {{$labels.device}} usage is at {{ humanize $value }}%. Please, free it up. "
+
+  - alert: node_disk_fill_rate_6h
+    expr: predict_linear(node_filesystem_free_bytes{device=~"/dev/[sd|xvd|nvme].*"}[1h], 6 * 3600) * ON(instance) GROUP_LEFT(nodename) node_uname_info < 0
+    for: 1h
+    labels:
+      severity: critical
+    annotations:
+      summary: "Disk fill alert for Node {{ $labels.nodename }}"
+      description: "Node {{ $labels.nodename }} disk is going to fill up in 6h"
+
+  - alert: node_memory_usage
+    expr: avg(((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * ON(instance) GROUP_LEFT(nodename) node_uname_info * 100) BY (nodename) > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: "Node {{ $labels.nodename }} memory usage is at {{ humanize $value }}%"
+      summary: "Memory alert for Node {{ $labels.nodename }}"
+
+  - alert: node_swap_usage
+    expr: avg(((node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes) * ON(instance) GROUP_LEFT(nodename) node_uname_info * 100) BY (nodename) > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: "Node {{ $labels.nodename }} swap usage is at {{ humanize $value }}%"
+      summary: "Memory alert for Node {{ $labels.nodename }}"
+
+- name: blackbox exporter rules
+  rules:
+  - alert: SSLCertExpiringSoon
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 15
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SSL expire alert on {{ $labels.instance }} host: {{ $labels.host }}"
+      description: "SSL certificate for the {{ $labels.instance }} will expire in {{ humanizeDuration $value }} host: {{ $labels.host }}"
+
+  - alert: HTTPS probe fails
+    expr: probe_success{module="https_2xx"} < 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HTTPS probe fails for {{ $labels.instance }} host: {{ $labels.host }}"
+      description: "HTTPS probe fails for the {{ $labels.instance }}  host: {{ $labels.host }}"
+
+  - alert: ICMP probe fails
+    expr: probe_success{module="icmp_ipv4"} < 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "ICMP probe fails for {{ $labels.instance }} VPN client: {{ $labels.vpn_client }} host: {{ $labels.host }}"
+      description: "ICMP probe fails for the {{ $labels.instance }} VPN client: {{ $labels.vpn_client }} host: {{ $labels.host }}. Please, check connection VPN connection"
+
+  - alert: TCP probe fails
+    expr: probe_success{module="tcp"} < 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "TCP probe fails for the {{ $labels.instance }} host: {{ $labels.host }}"
+      description: "TCP probe fails for the {{ $labels.instance }} host: {{ $labels.host }}"
+
+  - alert: SSH probe fails
+    expr: probe_success{module="ssh_banner"} < 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "SFTP probe fails for the {{ $labels.instance }} host: {{ $labels.host }} "
+      description: "SFTP probe fails for the {{ $labels.instance }} host: {{ $labels.host }} "
+
+- name: script exporter rules
+  rules:
+  - alert: script exporter probe fails
+    expr: script_success < 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Script exporter probe fails for the {{ $labels.script }} host: {{ $labels.host }}"
+      description: "Script exporter probe fails for the {{ $labels.script }} host: {{ $labels.host }} "
+
+- name: swarm_task.rules
+  rules:
+  - alert: task_high_cpu_usage_100
+    expr: sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_task_name=~".+"}[5m]))
+      BY (container_label_com_docker_swarm_task_name, container_label_com_docker_swarm_node_id) * 100 > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: "{{ $labels.container_label_com_docker_swarm_task_name }} on {{ $labels.container_label_com_docker_swarm_node_id }} CPU usage is at {{ humanize $value }}%"
+      summary: "CPU alert for Swarm task {{ $labels.container_label_com_docker_swarm_task_name }} on {{ $labels.container_label_com_docker_swarm_node_id }}"
+
+  - alert: service_high_cpu_usage_100
+    expr: sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~".+"}[5m]))
+      BY (container_label_com_docker_swarm_service_name, container_label_com_docker_swarm_node_id) * 100 > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      description: "{{ $labels.container_label_com_docker_swarm_task_name }} on {{ $labels.container_label_com_docker_swarm_node_id }} CPU usage is at {{ humanize $value }}%"
+      summary: "CPU alert for Swarm task {{ $labels.container_label_com_docker_swarm_task_name }} on {{ $labels.container_label_com_docker_swarm_node_id }}"

@@ -1,4 +1,3 @@
----
 - name: Setup first manager
   hosts: first_manager
   gather_facts: True
@@ -6,10 +5,13 @@
     - { role: auth }
     - { role: apt-setup }
     - { role: fluentbit }
+    - { role: cadvisor }
+    - { role: node-exporter }
     - { role: docker-install }
     - { role: swarm-first-manager }
     - { role: deploy-traefik }
     - { role: deploy-portainer }
     - { role: deploy-elasticsearch }
     - { role: deploy-jenkins }
+    - { role: deploy-swarmprom }
 

@@ -30,10 +30,10 @@ ANSIBLE_GROUPS = {
   "workers" => ["worker-[1:#{WORKERS_COUNT}]"],
 }
 
-
 def next_ip(previous_ipaddr)
   next_ipaddr = IPAddr.new(previous_ipaddr.to_i + 1, Socket::AF_INET)
 end
+
 SUBNET_IPADDR = IPAddr.new("192.168.200.0/24")
 last_ipaddr = SUBNET_IPADDR
 GATEWAY_IPADDR = next_ip(last_ipaddr)
@@ -59,6 +59,9 @@ end
   last_ipaddr = worker_ip
   IP_LIST["worker-#{index}"] = worker_ip.to_s
 end
+
+PROMETHEUS_HOSTS=[]
+IP_LIST.each{|k,v| PROMETHEUS_HOSTS.append("#{k}:#{v}") if not k == 'apt-proxy'}
 
 Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
@@ -113,6 +116,7 @@ Vagrant.configure("2") do |config|
         node_labels: NODE_LABELS,
         portainer_admin_password: PORTAINER_ADMIN_PASSWORD,
         portainer_node: STACKS_PLACEMENT['portainer'],
+        prometheus_target_hosts: PROMETHEUS_HOSTS,
         traefik_access_list: TRAEFIK_AUTH_BASIC,
       }
     end

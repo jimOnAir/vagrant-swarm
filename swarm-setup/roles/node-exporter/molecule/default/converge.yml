@@ -1,0 +1,7 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: "Include node-exporter"
+      include_role:
+        name: "node-exporter"

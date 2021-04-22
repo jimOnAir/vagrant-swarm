@@ -17,7 +17,7 @@
 - name: deploy-jenkins | Set digests
   set_fact:
     digests: "{{ digests | default({}) | combine( {('jenkins_' + secret.name  | string) :  ( secret.data | checksum  | truncate(10, true,''))} ) }}"
-#  no_log: true
+  no_log: true
   loop: "{{ jenkins_secrets }}"
   loop_control:
     loop_var: secret

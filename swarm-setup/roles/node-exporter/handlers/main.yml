@@ -1,0 +1,8 @@
+---
+# handlers file for node-exporter
+
+- name: restart node-exporter
+  systemd:
+    name: node_exporter
+    state: restarted
+  become: True
