@@ -11,4 +11,5 @@
     - { role: deploy-traefik }
     - { role: deploy-portainer }
     - { role: deploy-elasticsearch }
+    - { role: deploy-jenkins }
 

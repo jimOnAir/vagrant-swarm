@@ -1,0 +1,56 @@
+---
+# tasks file for deploy-jenkins
+- name: deploy-jenkins | create reverse-proxy network
+  docker_network:
+    name: "reverse-proxy"
+    state: present
+    attachable: True
+    scope: swarm
+    driver: overlay
+
+- name: deploy-jenkins | Set jenkins_secrets
+  set_fact:
+    jenkins_secrets:
+      - { name: 'casc.yaml', data: "{{ lookup('template',  [ role_path, 'templates' , 'casc.yaml.j2'] | join('/')) }}"}
+  no_log: true
+
+- name: deploy-jenkins | Set digests
+  set_fact:
+    digests: "{{ digests | default({}) | combine( {('jenkins_' + secret.name  | string) :  ( secret.data | checksum  | truncate(10, true,''))} ) }}"
+#  no_log: true
+  loop: "{{ jenkins_secrets }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-jenkins | Create secrets
+  docker_secret:
+    name: "jenkins_{{ secret.name }}_{{ digests['jenkins_' + secret.name] }}"
+    state: present
+    data: "{{ secret.data }}"
+  no_log: true
+  loop:  "{{ jenkins_secrets }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-jenkins | create temp file
+  tempfile:
+    state: file
+    suffix: ".yml"
+  register: compose_file
+
+- name: deploy-jenkins | create temporary compose file
+  template:
+    src:  "{{ [ role_path, 'templates' , 'docker-compose.yml.j2'] | join('/') }}"
+    dest: compose_file.path
+
+- name: deploy-jenkins | Deploy jenkins stack
+  docker_stack:
+    name: jenkins
+    compose: compose_file.path
+    prune: True
+    with_registry_auth: True
+
+- name: deploy-jenkins | remove temporary compose file
+  file:
+    path: compose_file.path
+    state: absent

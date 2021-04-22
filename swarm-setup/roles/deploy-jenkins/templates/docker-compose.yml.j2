@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+
+  jenkins:
+    image: jimonair/jenkins:2.289-nodejs
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - 'jenkins_home:/var/jenkins_home'
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - 'JAVA_OPTS="-Dhudson.footerURL=https://ci.{{ domain | default ("local")  }} -Dpermissive-script-security.enabled=true -Dhudson.model.DirectoryBrowserSupport.CSP=" -Djenkins.install.runSetupWizard=false'
+      - 'CASC_JENKINS_CONFIG=/var/jenkins_home/casc.yaml'
+      - 'JENKINS_ADMIN_ID={{ jenkins_user | default('admin')}}'
+      - 'JENKINS_ADMIN_PASSWORD={{ jenkins_password | default('admin') }}'
+      - 'JENKINS_URL=https://ci.{{ domain | default ("local")  }}'
+    stop_grace_period: 1m
+    networks:
+      - reverse-proxy
+    secrets:
+      - source: jenkins_casc.yaml_{{ digests['jenkins_casc.yaml'] }}
+        target: /var/jenkins_home/casc.yaml
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == {{ jenkins_node }}
+      labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.ci-http.entrypoints=http"
+      - "traefik.http.routers.ci-http.middlewares=redirect-scheme-https@file"
+      - "traefik.http.routers.ci-http.rule=Host(`ci.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.ci-http.service=ci"
+
+      - "traefik.http.routers.ci-https.middlewares=compress@file"
+      - "traefik.http.routers.ci-https.entrypoints=https"
+      - "traefik.http.routers.ci-https.rule=Host(`ci.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.ci-https.service=ci"
+      - "traefik.http.routers.ci-https.tls=true"
+      - "traefik.http.services.ci.loadbalancer.server.port=8080"
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+volumes:
+  jenkins_home:
+    external: true
+    name: {% raw %}'{{index .Service.Labels "com.docker.stack.namespace"}}-jenkins_home-{{.Task.Slot}}'{% endraw %}
+
+networks:
+  reverse-proxy:
+    external: true
+
+secrets:
+  jenkins_casc.yaml_{{ digests['jenkins_casc.yaml'] }}:
+    external: true
