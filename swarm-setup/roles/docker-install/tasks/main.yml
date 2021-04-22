@@ -97,12 +97,7 @@
     group: root
     mode: 0644
   become: True
-
-- name: docker-install | Restart docker
-  service:
-    name: "docker"
-    state: "restarted"
-  become: True
+  notify: restart docker
 
 - name: docker-install | Docker login
   docker_login:

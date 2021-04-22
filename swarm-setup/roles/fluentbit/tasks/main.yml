@@ -20,6 +20,14 @@
     repo: deb https://packages.fluentbit.io/{{ ansible_distribution | lower }}/{{ ansible_distribution_release | lower }} {{ ansible_distribution_release | lower }} main
     update_cache: True
   become: True
+  when: not apt_proxy is defined
+
+- name: fluentbit | Add Fluent bit repository
+  apt_repository:
+    repo: deb http://fluentbit-repo.local {{ ansible_distribution_release | lower }} main
+    update_cache: True
+  become: True
+  when: apt_proxy is defined
 
 - name: fluentbit | Install Fluent bit
   apt:
@@ -35,18 +43,10 @@
     owner: root
     group: root
   become: True
-  register: fluent_bit_config_changed
+  notify: restart fluentbit
 
 - name: fluentbit | Enable Fluent bit service
   systemd:
     name: td-agent-bit
     enabled: True
   become: True
-
-- name: fluentbit | Reload Fluent bit service
-  systemd:
-    name: td-agent-bit
-    enabled: True
-    state: restarted
-  become: True
-  when: fluent_bit_config_changed.changed

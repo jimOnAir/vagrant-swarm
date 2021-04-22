@@ -1,2 +1,8 @@
 ---
 # handlers file for apt-proxy
+
+- name: restart apt-cacher-ng
+  systemd:
+    name: apt-cacher-ng
+    state: restarted
+  become: True
