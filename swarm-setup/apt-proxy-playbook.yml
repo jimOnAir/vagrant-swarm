@@ -6,4 +6,5 @@
   roles:
     - { role: auth }
     - { role: apt-setup }
+    - { role: avahi }
     - { role: apt-proxy }

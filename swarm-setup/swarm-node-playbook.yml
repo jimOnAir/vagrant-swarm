@@ -6,5 +6,9 @@
   roles:
     - { role: auth }
     - { role: apt-setup }
+    - { role: avahi }
     - { role: docker-install }
+    - { role: fluentbit }
+    - { role: cadvisor }
+    - { role: node-exporter }
     - { role: swarm-join-node }
