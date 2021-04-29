@@ -1,0 +1,20 @@
+---
+# defaults file for fluenbit
+
+fluentbit_enable_metrics: True
+fluentbit_metrics_port: 2020
+
+
+inputs:
+    - - Name systemd
+      - Tag  host.*
+      - Systemd_Filter  _SYSTEMD_UNIT=docker.service
+outputs:
+    - - Name es
+      - Match *
+      - "Host {{ elasticsearch_host | default('127.0.0.1') }}"
+      - "Port {{ elasticsearch_port | default('9200') }}"
+      - "Index {{ elasticsearch_index | default('fluentbit') }}"
+      - "HTTP_User elastic"
+      - "HTTP_Passwd {{ elasticsearch_password | default('elastic') }}"
+

@@ -1,0 +1,52 @@
+---
+# tasks file for fluenbit
+
+- name: fluentbit | Add prerequirements
+  apt:
+    name:
+      apt-transport-https
+    state: present
+    update_cache: yes
+  become: True
+
+
+- name: fluentbit | Add Fluent bit apt key
+  apt_key:
+    url: https://packages.fluentbit.io/fluentbit.key
+  become: True
+
+- name: fluentbit | Add Fluent bit repository
+  apt_repository:
+    repo: deb https://packages.fluentbit.io/{{ ansible_distribution | lower }}/{{ ansible_distribution_release | lower }} {{ ansible_distribution_release | lower }} main
+    update_cache: True
+  become: True
+  when: not apt_proxy is defined
+
+- name: fluentbit | Add Fluent bit repository
+  apt_repository:
+    repo: deb http://fluentbit-repo.local {{ ansible_distribution_release | lower }} main
+    update_cache: True
+  become: True
+  when: apt_proxy is defined
+
+- name: fluentbit | Install Fluent bit
+  apt:
+    name:
+      - td-agent-bit
+  become: True
+
+- name: fluentbit | Install config
+  template:
+    src: "{{ [ role_path, 'templates', 'td-agent-bit.conf.j2'] | join('/') }}"
+    dest: /etc/td-agent-bit/td-agent-bit.conf
+    mode: '0622'
+    owner: root
+    group: root
+  become: True
+  notify: restart fluentbit
+
+- name: fluentbit | Enable Fluent bit service
+  systemd:
+    name: td-agent-bit
+    enabled: True
+  become: True

@@ -1,0 +1,11 @@
+---
+# handlers file for node-cadvisor
+
+- name: restart cadvisor
+  become: yes
+  service:
+    enabled: yes
+    name: cadvisor.service
+    state: restarted
+    daemon_reload: true
+  when: cadvisor_config.changed

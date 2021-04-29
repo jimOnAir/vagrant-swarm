@@ -1,0 +1,60 @@
+---
+# tasks file for deploy-swarmprom
+
+- name: deploy-swarmprom | create reverse-proxy network
+  docker_network:
+    name: "reverse-proxy"
+    state: present
+    attachable: True
+    scope: swarm
+    driver: overlay
+
+- name: deploy-swarmprom | Set swarmprom_secrets
+  set_fact:
+    swarmprom_secrets:
+      - { name: 'alert.rules.yml', data: "{{ lookup('file',  [ role_path, 'files' , 'alert.rules.yml'] | join('/')) }}" }
+      - { name: 'alertmanager.yml', data: "{{ lookup('template',  [ role_path, 'templates' , 'alertmanager.yml.j2'] | join('/')) }}" }
+      - { name: 'grafana.ini', data: "{{ lookup('template',  [ role_path, 'templates' , 'grafana.ini.j2'] | join('/')) }}" }
+      - { name: 'prometheus.yml', data: "{{ lookup('template',  [ role_path, 'templates' , 'prometheus.yml.j2'] | join('/')) }}" }
+  no_log: true
+
+- name: deploy-swarmprom | Set digests
+  set_fact:
+    digests: "{{ digests | default({}) | combine( {('swarmprom_' + secret.name  | string) :  ( secret.data | checksum  | truncate(10, true,''))} ) }}"
+  no_log: true
+  loop: "{{ swarmprom_secrets  }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-swarmprom | Create secrets
+  docker_secret:
+    name: "swarmprom_{{ secret.name }}_{{ digests['swarmprom_' + secret.name] }}"
+    state: present
+    data: "{{ secret.data }}"
+ # no_log: true
+  loop:  "{{ swarmprom_secrets }}"
+  loop_control:
+    loop_var: secret
+
+- name: deploy-swarmprom | create temp file
+  tempfile:
+    state: file
+    suffix: ".yml"
+  register: compose_file
+
+- name: deploy-swarmprom | create temporary compose file
+  template:
+    src:  "{{ [ role_path, 'templates' , 'docker-compose.yml.j2'] | join('/') }}"
+    dest: compose_file.path
+
+- name: deploy-swarmprom | Deploy swarmprom stack
+  docker_stack:
+    name: swarmprom
+    compose: compose_file.path
+    prune: True
+    with_registry_auth: True
+
+- name: deploy-swarmprom | remove temporary compose file
+  file:
+    path: compose_file.path
+    state: absent

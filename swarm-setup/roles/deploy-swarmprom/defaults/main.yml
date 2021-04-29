@@ -1,0 +1,10 @@
+---
+# defaults file for deploy-swarmprom
+prometheus_target_hosts: []
+prometheus_smtp_from: noreply@example.com
+prometheus_smtp_host: mx.example.com
+prometheus_smtp_hello: example.com
+prometheus_smtp_auth_username: noreply@example.com
+prometheus_smtp_auth_password: secretpassword
+prometheus_smtp_auth_identity: noreply@example.com
+prometheus_alert_receiver: admin@example.com

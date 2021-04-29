@@ -1,0 +1,10 @@
+---
+# handlers file for fluenbit
+
+- name: restart fluenbit
+  systemd:
+    name: td-agent-bit
+    enabled: True
+    state: restarted
+  become: True
+  when: fluent_bit_config_changed.changed

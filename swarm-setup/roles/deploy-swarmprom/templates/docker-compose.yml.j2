@@ -1,0 +1,169 @@
+#jinja2: trim_blocks:False
+version: "3.7"
+
+networks:
+  swarmprom:
+    driver: overlay
+    attachable: true
+  reverse-proxy:
+    external: true
+
+volumes:
+  prometheus:
+    name: {% raw %}'{{index .Service.Labels "com.docker.stack.namespace"}}-prometheus-{{.Task.Slot}}'{% endraw %}
+    external: true
+  grafana:
+    name: {% raw %}'{{index .Service.Labels "com.docker.stack.namespace"}}-grafana-{{.Task.Slot}}'{% endraw %}
+    external: true
+  alertmanager:
+    name: {% raw %}'{{index .Service.Labels "com.docker.stack.namespace"}}-alertmanager-{{.Task.Slot}}'{% endraw %}
+    external: true
+
+secrets:
+  swarmprom_alert.rules.yml_{{ digests['swarmprom_alert.rules.yml' ] }}:
+    external: true
+  swarmprom_prometheus.yml_{{ digests['swarmprom_prometheus.yml' ] }}:
+    external: true
+  swarmprom_alertmanager.yml_{{ digests['swarmprom_alertmanager.yml' ] }}:
+    external: true
+  swarmprom_grafana.ini_{{ digests['swarmprom_grafana.ini' ] }}:
+    external: true
+
+
+services:
+  grafana:
+    image: grafana/grafana:7.5.4
+    networks:
+      - swarmprom
+      - reverse-proxy
+    environment:
+      - GF_SECURITY_ADMIN_USER={{ grafana_admin_user | default('admin') }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password | default('admin') }}
+    volumes:
+      - grafana:/var/lib/grafana
+    secrets:
+      - source: swarmprom_grafana.ini_{{ digests['swarmprom_grafana.ini' ] }}
+        target: /etc/grafana/grafana.ini
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: stop-first
+      labels:
+
+# Traefik v2
+        - "traefik.enable=true"
+
+        - "traefik.http.routers.grafana-http.entrypoints=http"
+        - "traefik.http.routers.grafana-http.middlewares=redirect-scheme-https@file,compress@file"
+        - "traefik.http.routers.grafana-http.rule=Host(`grafana.{{ domain | default ("local")  }}`)"
+        - "traefik.http.routers.grafana-http.service=grafana"
+
+        - "traefik.http.routers.grafana-https.entrypoints=https"
+        - "traefik.http.routers.grafana-https.middlewares=compress@file"
+        - "traefik.http.routers.grafana-https.rule=Host(`grafana.{{ domain | default ("local")  }}`)"
+        - "traefik.http.routers.grafana-https.service=grafana"
+        - "traefik.http.routers.grafana-https.tls=true"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      placement:
+        constraints:
+          - node.hostname == {{ jenkins_node }}
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+  alertmanager:
+    image: prom/alertmanager:v0.21.0
+    networks:
+      - swarmprom
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    secrets:
+      - source: swarmprom_alertmanager.yml_{{ digests['swarmprom_alertmanager.yml' ] }}
+        target: /etc/alertmanager/alertmanager.yml
+    volumes:
+      - alertmanager:/alertmanager
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        order: stop-first
+      placement:
+        constraints:
+          - node.hostname == {{ jenkins_node }}
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+  prometheus:
+    image: prom/prometheus:v2.26.0
+    networks:
+      - reverse-proxy
+      - swarmprom
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1w'
+    volumes:
+      - prometheus:/prometheus
+{% if prometheus_target_hosts is defined %}
+    extra_hosts:
+{% for host in prometheus_target_hosts %}
+      - {{ host }}
+{% endfor %}
+{% endif %}
+    secrets:
+      - source: swarmprom_alert.rules.yml_{{digests['swarmprom_alert.rules.yml' ]}}
+        target: /etc/prometheus/alert_rules.yml
+      - source: swarmprom_prometheus.yml_{{ digests['swarmprom_prometheus.yml' ] }}
+        target: /etc/prometheus/prometheus.yml
+    deploy:
+      mode: replicated
+      update_config:
+        order: stop-first
+      replicas: 1
+      labels:
+# Traefik v2
+        - "traefik.enable=true"
+
+        - "traefik.http.routers.prometheus-http.entrypoints=http"
+        - "traefik.http.routers.prometheus-http.middlewares=redirect-scheme-https@file,compress@file"
+        - "traefik.http.routers.prometheus-http.rule=Host(`prometheus.{{ domain | default ("local")  }}`)"
+        - "traefik.http.routers.prometheus-http.service=prometheus"
+
+        - "traefik.http.routers.prometheus-https.entrypoints=https"
+        - "traefik.http.routers.prometheus-https.middlewares=compress@file"
+        - "traefik.http.routers.prometheus-https.rule=Host(`prometheus.{{ domain | default ("local")  }}`)"
+        - "traefik.http.routers.prometheus-https.service=prometheus"
+        - "traefik.http.routers.prometheus-https.tls=true"
+        - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+      placement:
+        constraints:
+          - node.hostname == {{ jenkins_node }}
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 128M
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"

@@ -12,9 +12,12 @@ ANSIBLE_RAW_ARGS = [
 ]
 STACKS_PLACEMENT = {
   "portainer" => 'manager-1',
+  "elasticsearch" => 'manager-1',
+  "jenkins" => 'manager-1',
 }
 
 NODE_LABELS = '{[ {"name": "manager-1", "labels": {"portainer": "true"}} ]}'
+ELASTIC_PASSWORD = 'elastic'
 TRAEFIK_AUTH_BASIC = '{ "users": [ {"username": "admin", "password": "admin" } ]}'
 PORTAINER_ADMIN_PASSWORD = 'admin'
 
@@ -106,7 +109,10 @@ Vagrant.configure("2") do |config|
         apt_proxy: IP_LIST['apt-proxy'],
         docker_user: "vagrant",
         domain: DOMAIN_NAME,
+        elasticsearch_node: STACKS_PLACEMENT['elasticsearch'],
+        elasticsearch_password: ELASTIC_PASSWORD,
         first_manager_ip: IP_LIST['manager-1'],
+        jenkins_node: STACKS_PLACEMENT['jenkins'],
         node_labels: NODE_LABELS,
         portainer_admin_password: PORTAINER_ADMIN_PASSWORD,
         portainer_node: STACKS_PLACEMENT['portainer'],

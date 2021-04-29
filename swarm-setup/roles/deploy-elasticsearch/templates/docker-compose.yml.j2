@@ -1,0 +1,82 @@
+version: '3.7'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    ports:
+      - 9200:9200
+    environment:
+      - cluster.name=docker-cluster
+      - ELASTIC_PASSWORD={{ elasicsearch_password | default('elastic') }}
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+    networks:
+      - elasticsearch
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - type: volume
+        source: elasticsearch_data
+        target: /usr/share/elasticsearch/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == {{ elasticsearch_node }}
+      update_config:
+        order: stop-first
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.2
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      - ELASTICSEARCH_PASSWORD={{ elasicsearch_password | default('elastic') }}
+      - ELASTICSEARCH_URL="http://elasticsearch:9200"
+      - ELASTICSEARCH_USERNAME=elastic
+      - xpack.security.enabled=true
+    networks:
+      - reverse-proxy
+      - elasticsearch
+    deploy:
+      placement:
+        constraints:
+          - node.hostname == {{ elasticsearch_node }}
+      update_config:
+        order: stop-first
+      labels:
+# Traefik v2
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.kibana-http.entrypoints=http"
+      - "traefik.http.routers.kibana-http.middlewares=redirect-scheme-https@file,compress@file"
+      - "traefik.http.routers.kibana-http.rule=Host(`kibana.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.kibana-http.service=kibana"
+
+      - "traefik.http.routers.kibana-https.entrypoints=https"
+      - "traefik.http.routers.kibana-https.middlewares=compress@file"
+      - "traefik.http.routers.kibana-https.rule=Host(`kibana.{{ domain | default ("local")  }}`)"
+      - "traefik.http.routers.kibana-https.service=kibana"
+      - "traefik.http.routers.kibana-https.tls=true"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    logging:
+      driver: journald
+      options:
+        tag: "{{ log_tag | default('docker.{{.ID}}/{{.Name}}') }}"
+        labels: "com.docker.swarm.service.name,com.docker.swarm,com.docker.stack.namespace"
+
+networks:
+  elasticsearch:
+    driver: overlay
+  reverse-proxy:
+    external: true
+volumes:
+  elasticsearch_data:
+    external: true
+    name: {%raw%}'{{index .Service.Labels "com.docker.stack.namespace"}}-elasticsearch_data-{{.Task.Slot}}'{%endraw%}

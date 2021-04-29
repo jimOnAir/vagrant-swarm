@@ -1,0 +1,13 @@
+---
+# defaults file for node-cadvisor
+
+# Version
+cadvisor_version: v0.37.5
+
+# SHA256 checksum
+cadvisor_checksum: 0becc44bc1f4bdf82485b1136897b421604c474a2cf7c1106fd2c032cbf6f5cb
+
+# Listen port
+cadvisor_port: 9280
+
+cadvisor_url: https://github.com/google/cadvisor/releases/download/

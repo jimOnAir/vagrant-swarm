@@ -15,6 +15,7 @@
     regexp: '^(# )?PassThroughPattern: .*$'
     state: present
   become: True
+  notify: restart apt-cacher-ng
 
 - name: apt-proxy | Add docker repo mapping
   copy:
@@ -25,15 +26,27 @@
     group: root
   become: True
 
-- name: apt-proxy | Add remap rule
+- name: apt-proxy | Add fluentbit repo mapping
+  copy:
+    content: https://packages.fluentbit.io/ubuntu/focal
+    dest: /etc/apt-cacher-ng/packages.fluentbit.io_ubuntu_focal
+    mode: 644
+    owner: root
+    group: root
+  become: True
+
+- name: apt-proxy | Add docker remap rule
   lineinfile:
     dest: /etc/apt-cacher-ng/acng.conf
     line: "Remap-docker: http://docker-repo.local ; file:download.docker.com_linux_ubuntu"
     state: present
   become: True
+  notify: restart apt-cacher-ng
 
-- name: apt-proxy | reload apt-cacher-ng
-  systemd:
-    name: apt-cacher-ng
-    state: restarted
+- name: apt-proxy | Add fluentbit remap rule
+  lineinfile:
+    dest: /etc/apt-cacher-ng/acng.conf
+    line: "Remap-fluentbit: http://fluentbit-repo.local ; file:packages.fluentbit.io_ubuntu_focal"
+    state: present
   become: True
+  notify: restart apt-cacher-ng

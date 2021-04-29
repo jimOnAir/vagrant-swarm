@@ -1,0 +1,25 @@
+---
+# tasks file for deploy-elasticsearch
+
+- name: deploy-elasticsearch | create temp file
+  tempfile:
+    state: file
+    suffix: ".yml"
+  register: compose_file
+
+- name: deploy-elasticsearch | create temporary compose file
+  template:
+    src:  "{{ [ role_path, 'templates' , 'docker-compose.yml.j2'] | join('/') }}"
+    dest: compose_file.path
+
+- name: deploy-elasticsearch | Deploy elasticsearch stack
+  docker_stack:
+    name: elasticsearch
+    compose: compose_file.path
+    prune: True
+    with_registry_auth: True
+
+- name: deploy-elasticsearch | remove temporary compose file
+  file:
+    path: compose_file.path
+    state: absent
